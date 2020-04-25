@@ -1,0 +1,9 @@
+[Unit]
+Description=Gunicorn service
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/tf02_Flask
+ExecStart=/home/ubuntu/miniconda3/envs/tensorflow_flask/bin/gunicorn --workers 3 --bind unix:tfFlaskApp.sock -m 007 tfFlaskApp:app

@@ -1,6 +1,6 @@
 from tensorflow.keras.models import load_model
 import numpy as np
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, json
 from werkzeug.utils import secure_filename
 from flask_cors import CORS, cross_origin
 import os
@@ -61,31 +61,105 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 
-@app.route('/images/<path:filename>', methods=['GET'])
+@app.route('/api/images', methods=['GET'])
+def get_all_images():
+    res = []
+    for fileName in os.listdir('./images'):
+        if fileName.endswith(('.png')):
+            res.append({'fileName': fileName})
+    body = {}
+    body["items"] = res
+    resp = app.response_class(
+        response=json.dumps(body),
+        status=200,
+        mimetype='application/json')
+    return resp
+
+
+# @app.route('/api/imagesAttached/<path:filename>', methods=['GET'])
+# def send_route_attach(filename):
+#     return send_from_directory('./images', filename, as_attachment=True)
+
+
+@app.route('/api/images/<path:filename>', methods=['GET'])
 def send_route(filename):
-    return send_from_directory('./images', filename, as_attachment=True)
+    if not filename:
+        return (jsonify({'error': 'Invalid request.'}), 400)
+    filename = secure_filename(filename)
+    if allowed_file(filename):
+        resp = send_from_directory('./images', filename, mimetype='image/png', cache_timeout=30*60)
+        return resp
+    else:
+        return (jsonify({'error': 'Invalid request.'}), 400)
+
+
+@app.route('/api/recogImage/<path:filename>', methods=['GET'])
+def recog_image(filename):
+    if not filename:
+        #print("/api/image POST -- ERROR: Invalid request.")
+        # 400 - Bad request
+        return (jsonify({'error': 'Invalid request.'}), 400)
+    filename = secure_filename(filename)
+    if allowed_file(filename):
+        if (not os.path.exists("./images/" + filename)):
+            # 400 - Bad request
+            #print("/api/image POST -- ERROR: invalid image ;" + filename + ";")
+            return (jsonify({'error': 'Invalid request.'}), 400)
+        #print("/api/image POST -- file name is good...")
+        try:
+            img = Image.open("./images/"+filename)
+            x = imageprepare(img)  # x is 1d list 784
+
+            # model is trained with 28x28=784 pixels, values (0.0 - 1.0)
+            # convert 1d list x[] of 784 pixels with values (1 - 255) to
+            # mnistInputArr 3d numpy array 1x28x28 with values (0.0 - 1.0)
+            mnist_input_arr = np.zeros((1, int(IMAGE_WIDTH), int(IMAGE_HEIGHT)))
+            k = 0
+            for i in range(int(IMAGE_WIDTH)):
+                for j in range(int(IMAGE_HEIGHT)):
+                    mnist_input_arr[0][i][j] = x[k] / 255.0
+                    k = k + 1
+
+            pred = modelFromFile.predict(mnist_input_arr)
+            #print("/api/image POST -- after the prediction: ", pred)
+            items = []
+            items.append({'item': class_names[np.argmax(pred[0])], 'probability': float(pred[0][np.argmax(pred[0])])})
+            response = {'predictions': items}
+            #print("/api/image POST -- end: ", items)
+            return (jsonify(response), 200)
+        except Exception:
+            # 400 - Bad request
+            #print("/api/image POST -- ERROR: invalid request ;" + filename + ";")
+            return (jsonify({'error': 'Invalid request'}), 400)
+    else:
+        #print("/api/image POST -- file has invalid extension")
+        # 422- Unprocessable Entity
+        return (jsonify({'error': 'File has invalid extension'}), 422)
 
 
 @app.route('/api/image', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def recognize_image():
-    print("/api/image POST -- start --")
+    """Accepts arbitrary PNG image file to recognize.
+       Not used in current implementation of the client
+    """
+    #print("/api/image POST -- start --")
     # check if the post request has the file part
     if 'image' not in request.files:
-        print("/api/image POST -- ERROR: No posted image. Should be attribute named image.")
+        #print("/api/image POST -- ERROR: No posted image. Should be attribute named image.")
         # 400 - Bad request
         return (jsonify({'ERROR': 'No posted image. Should be attribute named image.'}), 400)
     file = request.files['image']
 
     # user did not select file
     if file and file.filename == '':
-        print("/api/image POST -- ERROR: Empty filename submitted.")
+        #print("/api/image POST -- ERROR: Empty filename submitted.")
         # 400 - Bad request
         return (jsonify({'error': 'Empty filename submitted.'}), 400)
     if file and allowed_file(file.filename):
-        print("/api/image POST -- file is good...")
+        #print("/api/image POST -- file is good...")
         filename = secure_filename(file.filename)
-        print("processing input file:" + filename)
+        #print("processing input file:" + filename)
         img = Image.open(BytesIO(file.read()))
         img.load()
         x = imageprepare(img) # x is 1d list 784
@@ -101,14 +175,14 @@ def recognize_image():
                 k = k + 1
 
         pred = modelFromFile.predict(mnist_input_arr)
-        print("/api/image POST -- after the prediction: ", pred)
+        #print("/api/image POST -- after the prediction: ", pred)
         items = []
         items.append( {'item': class_names[np.argmax(pred[0])], 'probability': float(pred[0][np.argmax(pred[0])])} )
         response = {'predictions': items}
-        print("/api/image POST -- end: ", items)
+        #print("/api/image POST -- end: ", items)
         return(jsonify(response), 200)
     else:
-        print("/api/image POST -- file has invalid extension")
+        #print("/api/image POST -- file has invalid extension")
         # 422- Unprocessable Entity
         return (jsonify({'error': 'File has invalid extension'}), 422)
 
@@ -124,7 +198,7 @@ def home():
 # - 60,000 training images
 # - 10,000 test images
 # See https://github.com/zalandoresearch/fashion-mnist
-modelFromFile = load_model(os.path.join("./trainResults", "clothesModel01_ORIG.h5"))
+modelFromFile = load_model(os.path.join("./trainResults", "clothesModel01.h5"))
 
 
 # NOTE: keras library is not loading if the Flask is run in DEBUG mode

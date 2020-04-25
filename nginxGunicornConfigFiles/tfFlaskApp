@@ -1,0 +1,11 @@
+server{
+  listen 8080;
+  server_name 52.60.158.235;  # elastic IP address of AWS EC2 instance
+
+  location / {
+    # Possibly, need the following:
+    #proxy_set_header Host $host; # fixes redirect from DNS to localhost
+    proxy_pass http://unix:/home/ubuntu/tf02_Flask/tfFlaskApp.sock;
+    #proxy_pass http://127.0.0.1:8000;
+  }
+}
