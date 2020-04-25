@@ -62,6 +62,7 @@ def allowed_file(filename):
 
 
 @app.route('/api/images', methods=['GET'])
+@cross_origin()
 def get_all_images():
     res = []
     for fileName in os.listdir('./images'):
@@ -77,11 +78,13 @@ def get_all_images():
 
 
 # @app.route('/api/imagesAttached/<path:filename>', methods=['GET'])
+# @cross_origin()
 # def send_route_attach(filename):
 #     return send_from_directory('./images', filename, as_attachment=True)
 
 
 @app.route('/api/images/<path:filename>', methods=['GET'])
+@cross_origin()
 def send_route(filename):
     if not filename:
         return (jsonify({'error': 'Invalid request.'}), 400)
@@ -94,6 +97,7 @@ def send_route(filename):
 
 
 @app.route('/api/recogImage/<path:filename>', methods=['GET'])
+@cross_origin()
 def recog_image(filename):
     if not filename:
         #print("/api/image POST -- ERROR: Invalid request.")
@@ -138,7 +142,7 @@ def recog_image(filename):
 
 
 @app.route('/api/image', methods=['POST'])
-@cross_origin(supports_credentials=True)
+@cross_origin()
 def recognize_image():
     """Accepts arbitrary PNG image file to recognize.
        Not used in current implementation of the client
@@ -190,6 +194,7 @@ def recognize_image():
 # define routes using route decorator:
 @app.route('/')
 @app.route('/home')
+@cross_origin()
 def home():
     return f'<h3>Home page!</h3>'
 

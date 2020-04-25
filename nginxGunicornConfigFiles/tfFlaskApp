@@ -1,5 +1,11 @@
 server{
   listen 8080;
+  listen 443 ssl;
+
+  ssl on;
+  ssl_certificate /etc/ssl/certs/nginx-self-signed.crt;
+  ssl_certificate_key /etc/ssl/private/nginx-self-signed.key;
+
   server_name 52.60.158.235;  # elastic IP address of AWS EC2 instance
 
   location / {
