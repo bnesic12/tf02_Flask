@@ -1,16 +1,12 @@
 server{
-  listen 8080;
-  listen 443 ssl;
-
-  ssl on;
-  ssl_certificate /etc/ssl/certs/nginx-self-signed.crt;
-  ssl_certificate_key /etc/ssl/private/nginx-self-signed.key;
-
-  server_name 52.60.158.235;  # elastic IP address of AWS EC2 instance
-
+  # Works in config: AWS ELB (SSL Certificate for tf.aimg.bnabla.com) -- Nginx -- Gunicorn.
+  # Minimum content that makes Gunicorn API functional in above config.
+  # Should be further extended to properly secure Nginx.
+  listen 80;
+  listen [::]:80;
+  #server_name 15.223.107.254;
+  server_name tf.aimg.bnabla.com;
   location / {
-    # Possibly, need the following:
-    #proxy_set_header Host $host; # fixes redirect from DNS to localhost
     proxy_pass http://unix:/home/ubuntu/tf02_Flask/tfFlaskApp.sock;
     #proxy_pass http://127.0.0.1:8000;
   }
