@@ -1,7 +1,4 @@
 server{
-  # Works in config: AWS ELB (SSL Certificate for tf.aimg.bnabla.com) -- Nginx -- Gunicorn.
-  # Minimum content that makes Gunicorn API functional in above config.
-  # Should be further extended to properly secure Nginx.
   listen 80;
   listen [::]:80;
   #server_name 15.223.107.254;
@@ -9,5 +6,27 @@ server{
   location / {
     proxy_pass http://unix:/home/ubuntu/tf02_Flask/tfFlaskApp.sock;
     #proxy_pass http://127.0.0.1:8000;
+    set $cors '';
+    if ($http_origin ~ '^https?://(localhost|www\.yourdomain\.com|www\.yourotherdomain\.com)') {
+        set $cors 'true';
+    }
+
+    if ($cors = 'true') {
+        add_header 'Access-Control-Allow-Origin' "$http_origin" always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Accept,Authorization,Cache-Control,Content-Type,DNT,If-Modified-Since,Keep-Alive,Origin,User-Agent,X-Requested-With' always;
+        # required to be able to read Authorization header in frontend
+        #add_header 'Access-Control-Expose-Headers' 'Authorization' always;
+    }
+
+    if ($request_method = 'OPTIONS') {
+        # Tell client that this pre-flight info is valid for 20 days
+        add_header 'Access-Control-Max-Age' 1728000;
+        add_header 'Content-Type' 'text/plain charset=UTF-8';
+        add_header 'Content-Length' 0;
+        return 204;
+    }
+
   }
 }
